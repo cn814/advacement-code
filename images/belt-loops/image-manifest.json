@@ -1,0 +1,13 @@
+{
+  "description": "Belt loop image manifest - maps SKUs to image files",
+  "lastUpdated": "2024-12-16",
+  "images": {
+    "example": {
+      "sku": "614334",
+      "filename": "614334.jpg",
+      "rank": "Tiger",
+      "adventure": "Example Adventure"
+    }
+  },
+  "instructions": "Add entries for each belt loop image you download. The app will automatically load these images."
+}

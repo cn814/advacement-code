@@ -45,6 +45,49 @@ generateShoppingGuide.addEventListener('click', () => generateDocuments('shoppin
 generateLabels.addEventListener('click', () => generateDocuments('labels'));
 generateBoth.addEventListener('click', () => generateDocuments('both'));
 
+// Load belt loop images on startup
+loadBeltLoopImages();
+
+// Load belt loop images from directory
+async function loadBeltLoopImages() {
+    try {
+        const response = await fetch('images/belt-loops/image-manifest.json');
+        if (!response.ok) {
+            console.log('No image manifest found - images can be added manually');
+            return;
+        }
+
+        const manifest = await response.json();
+
+        for (const [key, imageInfo] of Object.entries(manifest.images)) {
+            if (key === 'example') continue; // Skip example entry
+
+            const imagePath = `images/belt-loops/${imageInfo.filename}`;
+            const sku = imageInfo.sku;
+
+            // Load image and convert to base64
+            try {
+                const imgResponse = await fetch(imagePath);
+                const blob = await imgResponse.blob();
+                const reader = new FileReader();
+
+                reader.onload = (e) => {
+                    appState.images[sku] = e.target.result;
+                    displayImageItem(sku, e.target.result);
+                };
+
+                reader.readAsDataURL(blob);
+            } catch (err) {
+                console.warn(`Failed to load image for SKU ${sku}:`, err);
+            }
+        }
+
+        console.log('Belt loop images loaded from directory');
+    } catch (error) {
+        console.log('Image manifest not available - images can be added manually');
+    }
+}
+
 // File upload handlers
 function handleFileUpload(e) {
     const file = e.target.files[0];
