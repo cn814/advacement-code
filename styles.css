@@ -1,0 +1,343 @@
+:root {
+    --bsa-blue: #003f87;
+    --bsa-red: #ce1126;
+    --bsa-gold: #ffc72c;
+    --bsa-orange: #ff6600;
+    --gray-light: #f5f5f5;
+    --gray-medium: #e0e0e0;
+    --gray-dark: #666;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background: linear-gradient(135deg, var(--bsa-blue) 0%, #1a5fa8 100%);
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+}
+
+header {
+    background: var(--bsa-blue);
+    color: white;
+    padding: 40px;
+    text-align: center;
+}
+
+header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+}
+
+.subtitle {
+    font-size: 1.1rem;
+    opacity: 0.9;
+}
+
+main {
+    padding: 40px;
+}
+
+h2 {
+    color: var(--bsa-blue);
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 3px solid var(--bsa-gold);
+}
+
+.upload-section,
+.config-section,
+.generate-section {
+    margin-bottom: 40px;
+}
+
+.upload-area {
+    border: 3px dashed var(--gray-medium);
+    border-radius: 8px;
+    padding: 60px 40px;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    background: var(--gray-light);
+}
+
+.upload-area:hover {
+    border-color: var(--bsa-blue);
+    background: #f0f8ff;
+}
+
+.upload-area.dragover {
+    border-color: var(--bsa-orange);
+    background: #fff5e6;
+}
+
+.upload-label {
+    cursor: pointer;
+    display: block;
+}
+
+.upload-icon {
+    font-size: 4rem;
+    margin-bottom: 15px;
+}
+
+.upload-text {
+    font-size: 1.3rem;
+    color: var(--bsa-blue);
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.upload-subtext {
+    color: var(--gray-dark);
+    font-size: 0.95rem;
+}
+
+.form-group {
+    margin-bottom: 25px;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 600;
+    color: var(--bsa-blue);
+    margin-bottom: 8px;
+}
+
+.form-group input[type="text"],
+.form-group select {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid var(--gray-medium);
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+}
+
+.form-group input[type="text"]:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--bsa-blue);
+}
+
+.help-text {
+    font-size: 0.9rem;
+    color: var(--gray-dark);
+    margin-top: 5px;
+}
+
+.image-upload-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.image-item {
+    border: 2px solid var(--gray-medium);
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+    position: relative;
+}
+
+.image-item img {
+    max-width: 100%;
+    height: 100px;
+    object-fit: contain;
+    margin-bottom: 8px;
+}
+
+.image-item input[type="text"] {
+    width: 100%;
+    padding: 5px;
+    border: 1px solid var(--gray-medium);
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+.image-item .remove-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: var(--bsa-red);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.add-image-btn {
+    border: 2px dashed var(--gray-medium);
+    border-radius: 8px;
+    padding: 40px 20px;
+    background: var(--gray-light);
+    color: var(--bsa-blue);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.add-image-btn:hover {
+    border-color: var(--bsa-blue);
+    background: #f0f8ff;
+}
+
+.data-preview {
+    background: var(--gray-light);
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 30px;
+}
+
+.data-preview h3 {
+    color: var(--bsa-blue);
+    margin-bottom: 15px;
+}
+
+#previewContent {
+    max-height: 400px;
+    overflow-y: auto;
+    font-size: 0.9rem;
+}
+
+.preview-den {
+    margin-bottom: 20px;
+}
+
+.preview-den h4 {
+    color: var(--bsa-orange);
+    margin-bottom: 10px;
+}
+
+.preview-scout {
+    margin-left: 20px;
+    margin-bottom: 8px;
+}
+
+.button-group {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.btn {
+    padding: 15px 30px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background: var(--bsa-blue);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #002d5f;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 63, 135, 0.3);
+}
+
+.btn-secondary {
+    background: var(--bsa-orange);
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #e55a00;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 102, 0, 0.3);
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.status-message {
+    margin-top: 20px;
+    padding: 15px;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+.status-message.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.status-message.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.status-message.info {
+    background: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
+footer {
+    background: var(--gray-light);
+    padding: 20px;
+    text-align: center;
+    color: var(--gray-dark);
+    font-size: 0.9rem;
+}
+
+footer a {
+    color: var(--bsa-blue);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+footer a:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+    header h1 {
+        font-size: 1.8rem;
+    }
+    
+    main {
+        padding: 20px;
+    }
+    
+    .button-group {
+        flex-direction: column;
+    }
+    
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
