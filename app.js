@@ -48,43 +48,95 @@ generateBoth.addEventListener('click', () => generateDocuments('both'));
 // Load belt loop images on startup
 loadBeltLoopImages();
 
+// Common belt loop SKUs - add your SKUs here
+const commonBeltLoopSKUs = [
+    // Tiger
+    '614334', '614335', '614336', '614337', '614338', '614339', '614340',
+    // Wolf
+    '614341', '614342', '614343', '614344', '614345', '614346', '614347',
+    // Bear
+    '614348', '614349', '614350', '614351', '614352', '614353', '614354',
+    // Webelos
+    '614355', '614356', '614357', '614358', '614359', '614360', '614361',
+    // Add more SKUs as needed
+];
+
 // Load belt loop images from directory
 async function loadBeltLoopImages() {
-    try {
-        const response = await fetch('images/belt-loops/image-manifest.json');
-        if (!response.ok) {
-            console.log('No image manifest found - images can be added manually');
-            return;
-        }
+    let loadedCount = 0;
+    const imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
 
-        const manifest = await response.json();
+    // Try to load each common SKU
+    for (const sku of commonBeltLoopSKUs) {
+        let imageLoaded = false;
 
-        for (const [key, imageInfo] of Object.entries(manifest.images)) {
-            if (key === 'example') continue; // Skip example entry
+        // Try each image extension
+        for (const ext of imageExtensions) {
+            if (imageLoaded) break;
 
-            const imagePath = `images/belt-loops/${imageInfo.filename}`;
-            const sku = imageInfo.sku;
+            const imagePath = `images/belt-loops/${sku}.${ext}`;
 
-            // Load image and convert to base64
             try {
                 const imgResponse = await fetch(imagePath);
-                const blob = await imgResponse.blob();
-                const reader = new FileReader();
+                if (imgResponse.ok) {
+                    const blob = await imgResponse.blob();
+                    const reader = new FileReader();
 
-                reader.onload = (e) => {
-                    appState.images[sku] = e.target.result;
-                    displayImageItem(sku, e.target.result);
-                };
+                    reader.onload = (e) => {
+                        appState.images[sku] = e.target.result;
+                        displayImageItem(sku, e.target.result);
+                    };
 
-                reader.readAsDataURL(blob);
+                    reader.readAsDataURL(blob);
+                    imageLoaded = true;
+                    loadedCount++;
+                }
             } catch (err) {
-                console.warn(`Failed to load image for SKU ${sku}:`, err);
+                // Image doesn't exist, skip silently
             }
         }
+    }
 
-        console.log('Belt loop images loaded from directory');
+    // Also try to load from manifest for custom additions
+    try {
+        const response = await fetch('images/belt-loops/image-manifest.json');
+        if (response.ok) {
+            const manifest = await response.json();
+
+            for (const [key, imageInfo] of Object.entries(manifest.images)) {
+                if (key === 'example') continue;
+
+                const imagePath = `images/belt-loops/${imageInfo.filename}`;
+                const sku = imageInfo.sku;
+
+                // Skip if already loaded
+                if (appState.images[sku]) continue;
+
+                try {
+                    const imgResponse = await fetch(imagePath);
+                    if (imgResponse.ok) {
+                        const blob = await imgResponse.blob();
+                        const reader = new FileReader();
+
+                        reader.onload = (e) => {
+                            appState.images[sku] = e.target.result;
+                            displayImageItem(sku, e.target.result);
+                        };
+
+                        reader.readAsDataURL(blob);
+                        loadedCount++;
+                    }
+                } catch (err) {
+                    console.warn(`Failed to load ${sku}:`, err);
+                }
+            }
+        }
     } catch (error) {
-        console.log('Image manifest not available - images can be added manually');
+        // No manifest file, that's okay
+    }
+
+    if (loadedCount > 0) {
+        console.log(`Loaded ${loadedCount} belt loop images from directory`);
     }
 }
 
