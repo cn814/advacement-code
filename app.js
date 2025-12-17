@@ -105,7 +105,7 @@ async function loadBeltLoopImages() {
 // Load Cub Scout logo
 async function loadCubScoutLogo() {
     try {
-        const response = await fetch('images/cub-scout-logo.png');
+        const response = await fetch('images/scout_awards_media/_all_flat/Cub_Scouting_(Boy_Scouts_of_America).svg.png');
         if (response.ok) {
             const blob = await response.blob();
             const reader = new FileReader();
@@ -115,7 +115,7 @@ async function loadCubScoutLogo() {
             reader.readAsDataURL(blob);
         }
     } catch (error) {
-        console.log('Logo not found');
+        console.log('Logo not found:', error);
     }
 }
 
@@ -564,18 +564,18 @@ async function generateLabelsPDF() {
             doc.setLineWidth(0.1);
             doc.rect(x, y, labelWidth, labelHeight);
 
-            // Add logo in top left corner
+            // Add small logo on left side
             if (appState.logo) {
                 try {
-                    const logoSize = 12;
-                    doc.addImage(appState.logo, 'PNG', x + 2, y + 2, logoSize, logoSize);
+                    const logoSize = 8;
+                    doc.addImage(appState.logo, 'PNG', x + 2, y + (labelHeight / 2) - (logoSize / 2), logoSize, logoSize);
                 } catch (err) {
                     console.warn('Failed to add logo:', err);
                 }
             }
 
-            // Add scout name at top
-            doc.setFontSize(12);
+            // Add scout name (bigger)
+            doc.setFontSize(16);
             doc.setFont(undefined, 'bold');
             doc.setTextColor(0, 63, 135);
             doc.text(scout.name, x + labelWidth / 2, y + 5, { align: 'center' });
@@ -584,13 +584,13 @@ async function generateLabelsPDF() {
             doc.setFontSize(9);
             doc.setFont(undefined, 'normal');
             doc.setTextColor(0, 0, 0);
-            doc.text(den, x + labelWidth / 2, y + 9, { align: 'center' });
+            doc.text(den, x + labelWidth / 2, y + 10, { align: 'center' });
 
-            // Add big number (total awards) on right side
-            doc.setFontSize(24);
+            // Add number (smaller) on right side
+            doc.setFontSize(14);
             doc.setFont(undefined, 'bold');
             doc.setTextColor(255, 102, 0);
-            doc.text(totalAwards.toString(), x + labelWidth - 8, y + 10, { align: 'center' });
+            doc.text(totalAwards.toString(), x + labelWidth - 6, y + (labelHeight / 2) + 2, { align: 'center' });
 
             // Add award list
             doc.setFontSize(7);
