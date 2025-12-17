@@ -132,8 +132,9 @@ async function loadBeltLoopImages() {
     }
 }
 
-// Load images on startup
-loadBeltLoopImages();
+// Load images on startup - temporarily disabled to reduce console noise during debugging
+// Uncomment this line once PDFs are working and you've added images
+// loadBeltLoopImages();
 
 // File upload handlers
 function handleFileUpload(e) {
