@@ -22,6 +22,7 @@ const labelTemplates = {
 // DOM elements
 const pdfUpload = document.getElementById('pdfUpload');
 const uploadArea = document.getElementById('uploadArea');
+const refreshUpload = document.getElementById('refreshUpload');
 const uploadStatus = document.getElementById('uploadStatus');
 const configSection = document.getElementById('configSection');
 const generateSection = document.getElementById('generateSection');
@@ -38,6 +39,7 @@ pdfUpload.addEventListener('change', handleFileUpload);
 uploadArea.addEventListener('dragover', handleDragOver);
 uploadArea.addEventListener('drop', handleDrop);
 uploadArea.addEventListener('dragleave', handleDragLeave);
+refreshUpload.addEventListener('click', resetUpload);
 packNumberInput.addEventListener('input', (e) => appState.packNumber = e.target.value);
 generateShoppingGuide.addEventListener('click', () => generateDocuments('shopping'));
 generateLabels.addEventListener('click', () => generateDocuments('labels'));
@@ -148,6 +150,28 @@ function handleDrop(e) {
     }
 }
 
+function resetUpload() {
+    // Reset file input
+    pdfUpload.value = '';
+
+    // Clear app state
+    appState.pdfData = null;
+    appState.parsedData = null;
+
+    // Show upload area, hide refresh button
+    uploadArea.style.display = 'block';
+    refreshUpload.style.display = 'none';
+
+    // Hide config and generate sections
+    configSection.style.display = 'none';
+    generateSection.style.display = 'none';
+
+    // Clear status and preview
+    uploadStatus.textContent = '';
+    uploadStatus.style.display = 'none';
+    previewContent.innerHTML = '';
+}
+
 // Process uploaded PDF
 async function processPDF(file) {
     try {
@@ -166,11 +190,16 @@ async function processPDF(file) {
         
         appState.pdfData = fullText;
         parsePDFData(fullText);
-        
+
         showStatus(uploadStatus, '✓ PDF processed successfully!', 'success');
+
+        // Hide upload area and show refresh button
+        uploadArea.style.display = 'none';
+        refreshUpload.style.display = 'block';
+
         configSection.style.display = 'block';
         generateSection.style.display = 'block';
-        
+
     } catch (error) {
         console.error('Error processing PDF:', error);
         showStatus(uploadStatus, '✗ Error processing PDF: ' + error.message, 'error');
