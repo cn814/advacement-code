@@ -595,14 +595,14 @@ async function generateLabelsPDF() {
             doc.setTextColor(255, 102, 0);
             doc.text(totalAwards.toString(), x + labelWidth - 6, y + (labelHeight / 2) + 2, { align: 'center' });
 
-            // Add award list
+            // Add award list (centered)
             doc.setFontSize(7);
             doc.setFont(undefined, 'normal');
             doc.setTextColor(0, 0, 0);
             let listY = y + 14;
             for (const adventure of scout.adventures) {
                 if (listY > y + labelHeight - 2) break; // Don't overflow label
-                doc.text(`• ${adventure.name}`, x + 2, listY);
+                doc.text(adventure.name, x + labelWidth / 2, listY, { align: 'center' });
                 listY += 3;
             }
 
