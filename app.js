@@ -346,67 +346,84 @@ async function generateShoppingGuidePDF() {
     doc.setFontSize(9);
     doc.text(date, 105, 35, { align: 'center' });
 
-    // Add content based on parsed data
-    let y = 50;
+    let y = 45;
 
     if (appState.parsedData && appState.parsedData.summary) {
-        doc.setFontSize(11);
-        doc.setFont(undefined, 'bold');
-        doc.text('Adventure Loop Shopping List', 20, y);
-        y += 8;
+        // Group adventures by den
+        const denGroups = {
+            'Lion': [],
+            'Tiger': [],
+            'Wolf': [],
+            'Bear': [],
+            'Webelos': [],
+            'Arrow of Light': []
+        };
 
-        // Calculate total loops
-        const totalLoops = Object.values(appState.parsedData.summary).reduce((sum, item) => sum + item.qty, 0);
-        doc.setFontSize(9);
-        doc.setFont(undefined, 'normal');
-        doc.text(`Total Loops: ${totalLoops}`, 20, y);
-        y += 10;
-
-        // Table headers
-        doc.setFontSize(9);
-        doc.setFont(undefined, 'bold');
-        doc.text('QTY', 20, y);
-        doc.text('SKU', 35, y);
-        doc.text('Adventure Name', 60, y);
-        doc.text('Scouts', 120, y);
-        y += 2;
-
-        // Draw header line
-        doc.setDrawColor(0, 0, 0);
-        doc.line(20, y, 190, y);
-        y += 6;
-
-        // List each adventure
-        doc.setFont(undefined, 'normal');
         for (const [sku, info] of Object.entries(appState.parsedData.summary)) {
+            const den = getDenFromSKU(sku);
+            denGroups[den].push({ sku, ...info });
+        }
+
+        // Display each den section
+        for (const [den, adventures] of Object.entries(denGroups)) {
+            if (adventures.length === 0) continue;
+
             // Check if we need a new page
-            if (y > 270) {
+            if (y > 250) {
                 doc.addPage();
                 y = 20;
             }
 
-            doc.text(info.qty.toString(), 20, y);
-            doc.text(sku, 35, y);
-            doc.text(info.name, 60, y, { maxWidth: 55 });
+            // Den header
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(255, 102, 0);
+            doc.text(den, 20, y);
+            y += 10;
 
-            // Wrap scout names if needed
-            const scoutText = info.scouts.join(', ');
-            const scoutLines = doc.splitTextToSize(scoutText, 70);
-            doc.text(scoutLines, 120, y);
+            // List each adventure in this den
+            for (const adventure of adventures) {
+                // Check if we need a new page
+                if (y > 250) {
+                    doc.addPage();
+                    y = 20;
+                }
 
-            y += Math.max(6, scoutLines.length * 4);
+                const imgSize = 20;
+
+                // Add image if available
+                if (appState.images[adventure.sku]) {
+                    try {
+                        doc.addImage(
+                            appState.images[adventure.sku],
+                            'JPEG',
+                            20,
+                            y,
+                            imgSize,
+                            imgSize
+                        );
+                    } catch (err) {
+                        console.warn(`Failed to add image for SKU ${adventure.sku}:`, err);
+                    }
+                }
+
+                // Add text info next to image
+                doc.setFontSize(10);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(0, 0, 0);
+                doc.text(`${adventure.name}`, 45, y + 5);
+
+                doc.setFont(undefined, 'normal');
+                doc.setFontSize(9);
+                doc.setTextColor(100, 100, 100);
+                doc.text(`SKU: ${adventure.sku}`, 45, y + 10);
+                doc.text(`Quantity: ${adventure.qty}`, 45, y + 15);
+
+                y += imgSize + 5;
+            }
+
+            y += 5; // Space after each den section
         }
-
-        // Add summary at bottom
-        y += 10;
-        if (y > 260) {
-            doc.addPage();
-            y = 20;
-        }
-        doc.line(20, y, 190, y);
-        y += 6;
-        doc.setFont(undefined, 'bold');
-        doc.text(`Total: ${totalLoops} adventure loops`, 20, y);
 
     } else {
         doc.setFontSize(10);
@@ -415,6 +432,40 @@ async function generateShoppingGuidePDF() {
 
     // Save PDF
     doc.save(`Pack_${appState.packNumber}_Shopping_Guide.pdf`);
+}
+
+// Helper function to determine den from adventure SKU
+function getDenFromSKU(sku) {
+    const skuNum = parseInt(sku);
+
+    // Lion adventures: 646384-646407, 660185-660224
+    if ((skuNum >= 646384 && skuNum <= 646407) || (skuNum >= 660185 && skuNum <= 660224)) {
+        return 'Lion';
+    }
+    // Tiger adventures: 619914-619929, 660225-660237
+    if ((skuNum >= 619914 && skuNum <= 619929) || (skuNum >= 660225 && skuNum <= 660237)) {
+        return 'Tiger';
+    }
+    // Wolf adventures: 619933-619949, 660238-660251
+    if ((skuNum >= 619933 && skuNum <= 619949) || (skuNum >= 660238 && skuNum <= 660251)) {
+        return 'Wolf';
+    }
+    // Bear adventures: 619955-619969, 660252-660264, 660402, 660425, 660435, 661069
+    if ((skuNum >= 619955 && skuNum <= 619969) || (skuNum >= 660252 && skuNum <= 660264) ||
+        skuNum === 660402 || skuNum === 660425 || skuNum === 660435 || skuNum === 661069) {
+        return 'Bear';
+    }
+    // Webelos adventures: 619985-619996, 660265-660280, 660434
+    if ((skuNum >= 619985 && skuNum <= 619996) || (skuNum >= 660265 && skuNum <= 660280) || skuNum === 660434) {
+        return 'Webelos';
+    }
+    // Arrow of Light adventures: 619970-619983, 653309, 660281-660297, 660403
+    if ((skuNum >= 619970 && skuNum <= 619983) || skuNum === 653309 ||
+        (skuNum >= 660281 && skuNum <= 660297) || skuNum === 660403) {
+        return 'Arrow of Light';
+    }
+
+    return 'Cub Scout';
 }
 
 // Generate labels PDF
@@ -433,61 +484,39 @@ async function generateLabelsPDF() {
 
     if (appState.parsedData && appState.parsedData.scouts) {
         for (const scout of appState.parsedData.scouts) {
-            for (const adventure of scout.adventures) {
-                // Start new page if needed
-                const row = Math.floor(labelIndex / template.cols);
-                if (row >= template.rows) {
-                    doc.addPage();
-                    labelIndex = 0;
-                }
+            // Determine den from first adventure (all adventures for a scout should be same den)
+            const den = scout.adventures.length > 0 ? getDenFromSKU(scout.adventures[0].sku) : 'Cub Scout';
 
-                const currentRow = Math.floor(labelIndex / template.cols);
-                const currentCol = labelIndex % template.cols;
-                const x = leftMargin + (currentCol * labelWidth);
-                const y = topMargin + (currentRow * labelHeight);
-
-                // Draw label border (optional - comment out for borderless)
-                doc.setDrawColor(200, 200, 200);
-                doc.setLineWidth(0.1);
-                doc.rect(x, y, labelWidth, labelHeight);
-
-                // Add scout name
-                doc.setFontSize(10);
-                doc.setFont(undefined, 'bold');
-                doc.setTextColor(0, 63, 135);
-                doc.text(scout.name, x + 3, y + 6);
-
-                // Add adventure name
-                doc.setFontSize(8);
-                doc.setFont(undefined, 'normal');
-                doc.setTextColor(0, 0, 0);
-                const adventureLines = doc.splitTextToSize(adventure.name, labelWidth - 6);
-                doc.text(adventureLines, x + 3, y + 11);
-
-                // Add SKU (smaller, at bottom)
-                doc.setFontSize(6);
-                doc.setTextColor(128, 128, 128);
-                doc.text(`SKU: ${adventure.sku}`, x + 3, y + labelHeight - 3);
-
-                // Add loop image if available
-                if (appState.images[adventure.sku]) {
-                    try {
-                        const imgSize = Math.min(labelHeight - 10, labelWidth / 3);
-                        doc.addImage(
-                            appState.images[adventure.sku],
-                            'JPEG',
-                            x + labelWidth - imgSize - 3,
-                            y + 3,
-                            imgSize,
-                            imgSize
-                        );
-                    } catch (err) {
-                        console.warn(`Failed to add image for SKU ${adventure.sku}:`, err);
-                    }
-                }
-
-                labelIndex++;
+            // Create one label per scout
+            const row = Math.floor(labelIndex / template.cols);
+            if (row >= template.rows) {
+                doc.addPage();
+                labelIndex = 0;
             }
+
+            const currentRow = Math.floor(labelIndex / template.cols);
+            const currentCol = labelIndex % template.cols;
+            const x = leftMargin + (currentCol * labelWidth);
+            const y = topMargin + (currentRow * labelHeight);
+
+            // Draw label border (optional)
+            doc.setDrawColor(200, 200, 200);
+            doc.setLineWidth(0.1);
+            doc.rect(x, y, labelWidth, labelHeight);
+
+            // Add scout name (centered vertically)
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(0, 63, 135);
+            doc.text(scout.name, x + labelWidth / 2, y + labelHeight / 2 - 3, { align: 'center' });
+
+            // Add den (centered, below name)
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'normal');
+            doc.setTextColor(0, 0, 0);
+            doc.text(den, x + labelWidth / 2, y + labelHeight / 2 + 4, { align: 'center' });
+
+            labelIndex++;
         }
     }
 
