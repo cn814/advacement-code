@@ -181,9 +181,12 @@ function parsePDFData(text) {
 
     while ((match = itemPattern.exec(text)) !== null) {
         const qty = parseInt(match[1]);
-        const sku = match[2];
+        let sku = match[2];
         let itemName = match[3].trim();
         const scoutText = match[4].trim();
+
+        // Fix known Scoutbook errors
+        if (sku === '653309') sku = '660282';
 
         // Clean up item name - remove "Adventure" suffix
         itemName = itemName.replace(/\s+Adventure\s*$/, '').trim();
@@ -225,8 +228,11 @@ function parsePDFData(text) {
             const skuMatch = line.match(/(\d+)\s+(6\d{5})\s+(.+)/);
             if (skuMatch) {
                 const qty = parseInt(skuMatch[1]);
-                const sku = skuMatch[2];
+                let sku = skuMatch[2];
                 let itemName = skuMatch[3];
+
+                // Fix known Scoutbook errors
+                if (sku === '653309') sku = '660282';
 
                 // Clean up item name
                 itemName = itemName.replace(/\s*Adventure\s*$/, '').replace(/\$.*$/, '').trim();
@@ -459,8 +465,8 @@ function getDenFromSKU(sku) {
     if ((skuNum >= 619985 && skuNum <= 619996) || (skuNum >= 660265 && skuNum <= 660280) || skuNum === 660434) {
         return 'Webelos';
     }
-    // Arrow of Light adventures: 619970-619983, 653309, 660281-660297, 660403
-    if ((skuNum >= 619970 && skuNum <= 619983) || skuNum === 653309 ||
+    // Arrow of Light adventures: 619970-619983, 660281-660297, 660403
+    if ((skuNum >= 619970 && skuNum <= 619983) ||
         (skuNum >= 660281 && skuNum <= 660297) || skuNum === 660403) {
         return 'Arrow of Light';
     }
