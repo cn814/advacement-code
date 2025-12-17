@@ -213,8 +213,8 @@ function parsePDFData(text) {
     }
 
     // Method 1: Try regex pattern matching on entire text
-    // This handles cases where PDF extraction doesn't preserve line breaks
-    const itemPattern = /(\d+)\s+(6\d{5})\s+([^\n$]+?)(?:Adventure)?\s+((?:[A-Z][a-z]+\s+[A-Z](?:,\s*)?)+)/g;
+    // Pattern: QTY SKU ItemName Adventure ScoutNames $ Price
+    const itemPattern = /(\d+)\s+(6\d{5})\s+(.+?Adventure)\s+([^$]+?)\s+\$/g;
     let match;
 
     while ((match = itemPattern.exec(text)) !== null) {
@@ -223,13 +223,13 @@ function parsePDFData(text) {
         let itemName = match[3].trim();
         const scoutText = match[4].trim();
 
-        // Clean up item name
-        itemName = itemName.replace(/\s*Adventure\s*$/, '').replace(/\$.*$/, '').trim();
+        // Clean up item name - remove "Adventure" suffix
+        itemName = itemName.replace(/\s+Adventure\s*$/, '').trim();
 
-        // Parse scout names
+        // Parse scout names - split by comma
         const scouts = scoutText.split(',').map(s => s.trim()).filter(s => s.length > 0);
 
-        console.log(`Found: QTY=${qty}, SKU=${sku}, Item=${itemName}, Scouts=${scouts.join(', ')}`);
+        console.log(`Found: QTY=${qty}, SKU=${sku}, Item="${itemName}", Scouts=${scouts.join(', ')}`);
 
         // Add to summary
         data.summary[sku] = {
