@@ -26,8 +26,6 @@ const configSection = document.getElementById('configSection');
 const generateSection = document.getElementById('generateSection');
 const packNumberInput = document.getElementById('packNumber');
 const labelTemplateSelect = document.getElementById('labelTemplate');
-const addImageBtn = document.getElementById('addImageBtn');
-const imageUploadGrid = document.getElementById('imageUploadGrid');
 const previewContent = document.getElementById('previewContent');
 const generateShoppingGuide = document.getElementById('generateShoppingGuide');
 const generateLabels = document.getElementById('generateLabels');
@@ -39,7 +37,6 @@ pdfUpload.addEventListener('change', handleFileUpload);
 uploadArea.addEventListener('dragover', handleDragOver);
 uploadArea.addEventListener('drop', handleDrop);
 uploadArea.addEventListener('dragleave', handleDragLeave);
-addImageBtn.addEventListener('click', addImageUpload);
 packNumberInput.addEventListener('input', (e) => appState.packNumber = e.target.value);
 generateShoppingGuide.addEventListener('click', () => generateDocuments('shopping'));
 generateLabels.addEventListener('click', () => generateDocuments('labels'));
@@ -84,7 +81,6 @@ async function loadBeltLoopImages() {
 
                     reader.onload = (e) => {
                         appState.images[sku] = e.target.result;
-                        displayImageItem(sku, e.target.result);
                     };
 
                     reader.readAsDataURL(blob);
@@ -120,7 +116,6 @@ async function loadBeltLoopImages() {
 
                         reader.onload = (e) => {
                             appState.images[sku] = e.target.result;
-                            displayImageItem(sku, e.target.result);
                         };
 
                         reader.readAsDataURL(blob);
@@ -196,43 +191,73 @@ async function processPDF(file) {
     }
 }
 
-// Parse PDF data to extract scouts and adventures
+// Parse PDF data to extract scouts and adventures from ScoutShop purchase order
 function parsePDFData(text) {
     const data = {
-        dens: {
-            'Lion': [],
-            'Tiger': [],
-            'Wolf': [],
-            'Bear': [],
-            'Webelos': [],
-            'Arrow of Light': []
-        }
+        scouts: [],      // Array of {name, adventures: [{sku, name, qty}]}
+        summary: {},     // SKU -> {name, qty, scouts: [names]}
+        packNumber: appState.packNumber
     };
-    
-    // This is a simplified parser - you'll need to customize based on your actual PDF format
-    // Looking for patterns like: "Scout Name    Adventure Name    Date"
+
     const lines = text.split('\n');
-    let currentScout = null;
-    let currentDen = null;
-    
-    for (let line of lines) {
-        line = line.trim();
-        
-        // Detect den headers
-        if (line.includes('Lion') && line.includes('Den')) currentDen = 'Lion';
-        else if (line.includes('Tiger') && line.includes('Den')) currentDen = 'Tiger';
-        else if (line.includes('Wolf') && line.includes('Den')) currentDen = 'Wolf';
-        else if (line.includes('Bear') && line.includes('Den')) currentDen = 'Bear';
-        else if (line.includes('Webelos')) currentDen = 'Webelos';
-        else if (line.includes('Arrow of Light')) currentDen = 'Arrow of Light';
-        
-        // Detect scout names and adventures
-        // This is a placeholder - customize for your PDF format
-        if (currentDen && line.length > 0) {
-            // Add parsing logic here based on your PDF structure
+
+    // Extract pack number from header if present
+    const packMatch = text.match(/Pack\s+(\d+)/i);
+    if (packMatch) {
+        data.packNumber = packMatch[1];
+        appState.packNumber = packMatch[1];
+        packNumberInput.value = packMatch[1];
+    }
+
+    // Parse each line looking for purchase order items
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+
+        // Look for SKU pattern (6-digit number starting with 6)
+        const skuMatch = line.match(/^(\d+)\s+(6\d{5})\s+(.+)/);
+        if (skuMatch) {
+            const qty = parseInt(skuMatch[1]);
+            const sku = skuMatch[2];
+            let itemName = skuMatch[3];
+
+            // Clean up item name - remove "Adventure" suffix and price info
+            itemName = itemName.replace(/\s*Adventure\s*$/, '').replace(/\$.*$/, '').trim();
+
+            // Look ahead for scout names (they appear on the next line)
+            let scouts = [];
+            if (i + 1 < lines.length) {
+                const nextLine = lines[i + 1].trim();
+                // Scout names are in format: "FirstName LastInitial, FirstName LastInitial"
+                // They don't start with numbers or $
+                if (nextLine && !nextLine.match(/^[\d\$]/) && !nextLine.includes('Adventure')) {
+                    scouts = nextLine.split(',').map(s => s.trim()).filter(s => s.length > 0);
+                }
+            }
+
+            // Add to summary
+            data.summary[sku] = {
+                name: itemName,
+                qty: qty,
+                scouts: scouts,
+                unitPrice: 1.99 // Default, could parse from line if needed
+            };
+
+            // Add to individual scout records
+            scouts.forEach(scoutName => {
+                let scout = data.scouts.find(s => s.name === scoutName);
+                if (!scout) {
+                    scout = { name: scoutName, adventures: [] };
+                    data.scouts.push(scout);
+                }
+                scout.adventures.push({
+                    sku: sku,
+                    name: itemName,
+                    qty: 1
+                });
+            });
         }
     }
-    
+
     appState.parsedData = data;
     displayPreview(data);
 }
@@ -240,75 +265,42 @@ function parsePDFData(text) {
 // Display parsed data preview
 function displayPreview(data) {
     let html = '';
-    
-    for (const [den, scouts] of Object.entries(data.dens)) {
-        if (scouts.length > 0) {
-            html += `<div class="preview-den">`;
-            html += `<h4>${den} Den (${scouts.length} scouts)</h4>`;
-            scouts.forEach(scout => {
-                html += `<div class="preview-scout">`;
-                html += `<strong>${scout.name}</strong>: ${scout.adventures.join(', ')}`;
-                html += `</div>`;
-            });
+
+    if (data.scouts && data.scouts.length > 0) {
+        html += `<div class="preview-summary">`;
+        html += `<h4>Order Summary (${data.scouts.length} scouts, ${Object.keys(data.summary).length} different adventures)</h4>`;
+        html += `</div>`;
+
+        // Show summary by adventure
+        html += `<div class="preview-section">`;
+        html += `<h5>By Adventure:</h5>`;
+        for (const [sku, info] of Object.entries(data.summary)) {
+            html += `<div class="preview-item">`;
+            html += `<strong>${info.name}</strong> (${sku}): ${info.qty} loops<br>`;
+            html += `<span class="scout-list">${info.scouts.join(', ')}</span>`;
             html += `</div>`;
         }
+        html += `</div>`;
+
+        // Show by scout
+        html += `<div class="preview-section">`;
+        html += `<h5>By Scout:</h5>`;
+        data.scouts.forEach(scout => {
+            html += `<div class="preview-scout">`;
+            html += `<strong>${scout.name}</strong>: ${scout.adventures.length} loop(s)<br>`;
+            html += `<span class="adventure-list">${scout.adventures.map(a => a.name).join(', ')}</span>`;
+            html += `</div>`;
+        });
+        html += `</div>`;
+    } else {
+        html = '<p>No data found in the purchase order. Please check the PDF format.</p>';
     }
-    
-    if (html === '') {
-        html = '<p>No data parsed yet. The PDF parser needs to be configured for your specific advancement report format.</p>';
-        html += '<p><strong>Tip:</strong> You can manually add scout data in the code or enhance the parser.</p>';
-    }
-    
+
     previewContent.innerHTML = html;
 }
 
-// Add image upload input
-function addImageUpload() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.addEventListener('change', handleImageUpload);
-    input.click();
-}
-
-function handleImageUpload(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    const reader = new FileReader();
-    reader.onload = (event) => {
-        const imageData = event.target.result;
-        const sku = prompt('Enter SKU number for this adventure loop:');
-        if (sku) {
-            appState.images[sku] = imageData;
-            displayImageItem(sku, imageData);
-        }
-    };
-    reader.readAsDataURL(file);
-}
-
-function displayImageItem(sku, imageData) {
-    const existingItem = document.getElementById(`image-${sku}`);
-    if (existingItem) {
-        existingItem.remove();
-    }
-    
-    const item = document.createElement('div');
-    item.className = 'image-item';
-    item.id = `image-${sku}`;
-    item.innerHTML = `
-        <button class="remove-btn" onclick="removeImage('${sku}')">×</button>
-        <img src="${imageData}" alt="Loop ${sku}">
-        <input type="text" value="${sku}" readonly>
-    `;
-    
-    imageUploadGrid.insertBefore(item, addImageBtn);
-}
-
-function removeImage(sku) {
-    delete appState.images[sku];
-    document.getElementById(`image-${sku}`).remove();
-}
+// Manual image upload and display functions removed - images now auto-load from directory
+// See loadBeltLoopImages() function above
 
 // Generate documents
 async function generateDocuments(type) {
@@ -335,40 +327,87 @@ async function generateDocuments(type) {
 async function generateShoppingGuidePDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-    
+
     // Title
     doc.setFontSize(20);
     doc.setTextColor(0, 63, 135);
     doc.text(`Pack ${appState.packNumber} Adventure Loops`, 105, 20, { align: 'center' });
-    
+
     doc.setFontSize(12);
     doc.setTextColor(0, 0, 0);
     doc.text('Shopping Guide', 105, 28, { align: 'center' });
-    
+
+    const date = new Date().toLocaleDateString();
+    doc.setFontSize(9);
+    doc.text(date, 105, 35, { align: 'center' });
+
     // Add content based on parsed data
-    let y = 45;
-    
-    if (appState.parsedData) {
-        for (const [den, scouts] of Object.entries(appState.parsedData.dens)) {
-            if (scouts.length > 0) {
-                doc.setFontSize(14);
-                doc.setTextColor(255, 102, 0);
-                doc.text(`${den} Den`, 20, y);
-                y += 10;
-                
-                // List adventures
-                doc.setFontSize(10);
-                doc.setTextColor(0, 0, 0);
-                // Add adventure listing logic here
-                
-                y += 15;
+    let y = 50;
+
+    if (appState.parsedData && appState.parsedData.summary) {
+        doc.setFontSize(11);
+        doc.setFont(undefined, 'bold');
+        doc.text('Adventure Loop Shopping List', 20, y);
+        y += 8;
+
+        // Calculate total loops
+        const totalLoops = Object.values(appState.parsedData.summary).reduce((sum, item) => sum + item.qty, 0);
+        doc.setFontSize(9);
+        doc.setFont(undefined, 'normal');
+        doc.text(`Total Loops: ${totalLoops}`, 20, y);
+        y += 10;
+
+        // Table headers
+        doc.setFontSize(9);
+        doc.setFont(undefined, 'bold');
+        doc.text('QTY', 20, y);
+        doc.text('SKU', 35, y);
+        doc.text('Adventure Name', 60, y);
+        doc.text('Scouts', 120, y);
+        y += 2;
+
+        // Draw header line
+        doc.setDrawColor(0, 0, 0);
+        doc.line(20, y, 190, y);
+        y += 6;
+
+        // List each adventure
+        doc.setFont(undefined, 'normal');
+        for (const [sku, info] of Object.entries(appState.parsedData.summary)) {
+            // Check if we need a new page
+            if (y > 270) {
+                doc.addPage();
+                y = 20;
             }
+
+            doc.text(info.qty.toString(), 20, y);
+            doc.text(sku, 35, y);
+            doc.text(info.name, 60, y, { maxWidth: 55 });
+
+            // Wrap scout names if needed
+            const scoutText = info.scouts.join(', ');
+            const scoutLines = doc.splitTextToSize(scoutText, 70);
+            doc.text(scoutLines, 120, y);
+
+            y += Math.max(6, scoutLines.length * 4);
         }
+
+        // Add summary at bottom
+        y += 10;
+        if (y > 260) {
+            doc.addPage();
+            y = 20;
+        }
+        doc.line(20, y, 190, y);
+        y += 6;
+        doc.setFont(undefined, 'bold');
+        doc.text(`Total: ${totalLoops} adventure loops`, 20, y);
+
     } else {
         doc.setFontSize(10);
-        doc.text('No parsed data available. Please upload an advancement report.', 20, y);
+        doc.text('No parsed data available. Please upload a purchase order.', 20, y);
     }
-    
+
     // Save PDF
     doc.save(`Pack_${appState.packNumber}_Shopping_Guide.pdf`);
 }
@@ -378,57 +417,75 @@ async function generateLabelsPDF() {
     const { jsPDF } = window.jspdf;
     const template = labelTemplates[labelTemplateSelect.value];
     const doc = new jsPDF();
-    
+
     const inch = 25.4; // mm per inch
     const labelWidth = template.width * inch;
     const labelHeight = template.height * inch;
     const leftMargin = template.leftMargin * inch;
     const topMargin = template.topMargin * inch;
-    
+
     let labelIndex = 0;
-    let pageNumber = 1;
-    
-    if (appState.parsedData) {
-        for (const [den, scouts] of Object.entries(appState.parsedData.dens)) {
-            for (const scout of scouts) {
-                const row = Math.floor(labelIndex / template.cols);
-                const col = labelIndex % template.cols;
-                
+
+    if (appState.parsedData && appState.parsedData.scouts) {
+        for (const scout of appState.parsedData.scouts) {
+            for (const adventure of scout.adventures) {
                 // Start new page if needed
+                const row = Math.floor(labelIndex / template.cols);
                 if (row >= template.rows) {
                     doc.addPage();
-                    pageNumber++;
                     labelIndex = 0;
                 }
-                
-                const x = leftMargin + (col * labelWidth);
-                const y = topMargin + (row * labelHeight);
-                
-                // Draw label border
+
+                const currentRow = Math.floor(labelIndex / template.cols);
+                const currentCol = labelIndex % template.cols;
+                const x = leftMargin + (currentCol * labelWidth);
+                const y = topMargin + (currentRow * labelHeight);
+
+                // Draw label border (optional - comment out for borderless)
                 doc.setDrawColor(200, 200, 200);
+                doc.setLineWidth(0.1);
                 doc.rect(x, y, labelWidth, labelHeight);
-                
+
                 // Add scout name
                 doc.setFontSize(10);
                 doc.setFont(undefined, 'bold');
                 doc.setTextColor(0, 63, 135);
                 doc.text(scout.name, x + 3, y + 6);
-                
-                // Add adventures
-                doc.setFontSize(7);
+
+                // Add adventure name
+                doc.setFontSize(8);
                 doc.setFont(undefined, 'normal');
                 doc.setTextColor(0, 0, 0);
-                let ay = y + 10;
-                for (const adventure of scout.adventures) {
-                    doc.text(`• ${adventure}`, x + 3, ay);
-                    ay += 3;
+                const adventureLines = doc.splitTextToSize(adventure.name, labelWidth - 6);
+                doc.text(adventureLines, x + 3, y + 11);
+
+                // Add SKU (smaller, at bottom)
+                doc.setFontSize(6);
+                doc.setTextColor(128, 128, 128);
+                doc.text(`SKU: ${adventure.sku}`, x + 3, y + labelHeight - 3);
+
+                // Add loop image if available
+                if (appState.images[adventure.sku]) {
+                    try {
+                        const imgSize = Math.min(labelHeight - 10, labelWidth / 3);
+                        doc.addImage(
+                            appState.images[adventure.sku],
+                            'JPEG',
+                            x + labelWidth - imgSize - 3,
+                            y + 3,
+                            imgSize,
+                            imgSize
+                        );
+                    } catch (err) {
+                        console.warn(`Failed to add image for SKU ${adventure.sku}:`, err);
+                    }
                 }
-                
+
                 labelIndex++;
             }
         }
     }
-    
+
     // Save PDF
     doc.save(`Pack_${appState.packNumber}_Labels_${labelTemplateSelect.value}.pdf`);
 }
