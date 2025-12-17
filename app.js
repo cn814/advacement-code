@@ -42,9 +42,6 @@ generateShoppingGuide.addEventListener('click', () => generateDocuments('shoppin
 generateLabels.addEventListener('click', () => generateDocuments('labels'));
 generateBoth.addEventListener('click', () => generateDocuments('both'));
 
-// Load belt loop images on startup
-loadBeltLoopImages();
-
 // Common belt loop SKUs - add your SKUs here
 const commonBeltLoopSKUs = [
     // Tiger
@@ -135,6 +132,9 @@ async function loadBeltLoopImages() {
     }
 }
 
+// Load images on startup
+loadBeltLoopImages();
+
 // File upload handlers
 function handleFileUpload(e) {
     const file = e.target.files[0];
@@ -199,7 +199,9 @@ function parsePDFData(text) {
         packNumber: appState.packNumber
     };
 
-    const lines = text.split('\n');
+    console.log('=== DEBUG: Raw PDF Text ===');
+    console.log(text);
+    console.log('=== END DEBUG ===');
 
     // Extract pack number from header if present
     const packMatch = text.match(/Pack\s+(\d+)/i);
@@ -209,55 +211,101 @@ function parsePDFData(text) {
         packNumberInput.value = packMatch[1];
     }
 
-    // Parse each line looking for purchase order items
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
+    // Method 1: Try regex pattern matching on entire text
+    // This handles cases where PDF extraction doesn't preserve line breaks
+    const itemPattern = /(\d+)\s+(6\d{5})\s+([^\n$]+?)(?:Adventure)?\s+((?:[A-Z][a-z]+\s+[A-Z](?:,\s*)?)+)/g;
+    let match;
 
-        // Look for SKU pattern (6-digit number starting with 6)
-        const skuMatch = line.match(/^(\d+)\s+(6\d{5})\s+(.+)/);
-        if (skuMatch) {
-            const qty = parseInt(skuMatch[1]);
-            const sku = skuMatch[2];
-            let itemName = skuMatch[3];
+    while ((match = itemPattern.exec(text)) !== null) {
+        const qty = parseInt(match[1]);
+        const sku = match[2];
+        let itemName = match[3].trim();
+        const scoutText = match[4].trim();
 
-            // Clean up item name - remove "Adventure" suffix and price info
-            itemName = itemName.replace(/\s*Adventure\s*$/, '').replace(/\$.*$/, '').trim();
+        // Clean up item name
+        itemName = itemName.replace(/\s*Adventure\s*$/, '').replace(/\$.*$/, '').trim();
 
-            // Look ahead for scout names (they appear on the next line)
-            let scouts = [];
-            if (i + 1 < lines.length) {
-                const nextLine = lines[i + 1].trim();
-                // Scout names are in format: "FirstName LastInitial, FirstName LastInitial"
-                // They don't start with numbers or $
-                if (nextLine && !nextLine.match(/^[\d\$]/) && !nextLine.includes('Adventure')) {
-                    scouts = nextLine.split(',').map(s => s.trim()).filter(s => s.length > 0);
-                }
+        // Parse scout names
+        const scouts = scoutText.split(',').map(s => s.trim()).filter(s => s.length > 0);
+
+        console.log(`Found: QTY=${qty}, SKU=${sku}, Item=${itemName}, Scouts=${scouts.join(', ')}`);
+
+        // Add to summary
+        data.summary[sku] = {
+            name: itemName,
+            qty: qty,
+            scouts: scouts,
+            unitPrice: 1.99
+        };
+
+        // Add to individual scout records
+        scouts.forEach(scoutName => {
+            let scout = data.scouts.find(s => s.name === scoutName);
+            if (!scout) {
+                scout = { name: scoutName, adventures: [] };
+                data.scouts.push(scout);
             }
-
-            // Add to summary
-            data.summary[sku] = {
+            scout.adventures.push({
+                sku: sku,
                 name: itemName,
-                qty: qty,
-                scouts: scouts,
-                unitPrice: 1.99 // Default, could parse from line if needed
-            };
-
-            // Add to individual scout records
-            scouts.forEach(scoutName => {
-                let scout = data.scouts.find(s => s.name === scoutName);
-                if (!scout) {
-                    scout = { name: scoutName, adventures: [] };
-                    data.scouts.push(scout);
-                }
-                scout.adventures.push({
-                    sku: sku,
-                    name: itemName,
-                    qty: 1
-                });
+                qty: 1
             });
+        });
+    }
+
+    // Method 2: If Method 1 didn't find anything, try line-by-line parsing
+    if (Object.keys(data.summary).length === 0) {
+        console.log('Method 1 failed, trying line-by-line parsing...');
+        const lines = text.split('\n');
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+
+            // Look for SKU pattern
+            const skuMatch = line.match(/(\d+)\s+(6\d{5})\s+(.+)/);
+            if (skuMatch) {
+                const qty = parseInt(skuMatch[1]);
+                const sku = skuMatch[2];
+                let itemName = skuMatch[3];
+
+                // Clean up item name
+                itemName = itemName.replace(/\s*Adventure\s*$/, '').replace(/\$.*$/, '').trim();
+
+                // Look ahead for scout names
+                let scouts = [];
+                if (i + 1 < lines.length) {
+                    const nextLine = lines[i + 1].trim();
+                    if (nextLine && !nextLine.match(/^[\d\$]/) && !nextLine.includes('Adventure') && nextLine.match(/[A-Z][a-z]+\s+[A-Z]/)) {
+                        scouts = nextLine.split(',').map(s => s.trim()).filter(s => s.length > 0);
+                    }
+                }
+
+                console.log(`Line parse: QTY=${qty}, SKU=${sku}, Item=${itemName}, Scouts=${scouts.join(', ')}`);
+
+                data.summary[sku] = {
+                    name: itemName,
+                    qty: qty,
+                    scouts: scouts,
+                    unitPrice: 1.99
+                };
+
+                scouts.forEach(scoutName => {
+                    let scout = data.scouts.find(s => s.name === scoutName);
+                    if (!scout) {
+                        scout = { name: scoutName, adventures: [] };
+                        data.scouts.push(scout);
+                    }
+                    scout.adventures.push({
+                        sku: sku,
+                        name: itemName,
+                        qty: 1
+                    });
+                });
+            }
         }
     }
 
+    console.log('Parsed data:', data);
     appState.parsedData = data;
     displayPreview(data);
 }
