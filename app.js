@@ -105,14 +105,17 @@ async function loadBeltLoopImages() {
 // Load Cub Scout logo
 async function loadCubScoutLogo() {
     try {
-        const response = await fetch('images/scout_awards_media/_all_flat/Cub_Scouting_(Boy_Scouts_of_America).svg.png');
+        const response = await fetch('images/scout_awards_media/_all_flat/cub-scout-logo.png');
         if (response.ok) {
             const blob = await response.blob();
             const reader = new FileReader();
             reader.onload = (e) => {
                 appState.logo = e.target.result;
+                console.log('Logo loaded successfully');
             };
             reader.readAsDataURL(blob);
+        } else {
+            console.log('Logo fetch failed:', response.status);
         }
     } catch (error) {
         console.log('Logo not found:', error);
