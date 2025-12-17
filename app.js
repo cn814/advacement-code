@@ -423,7 +423,12 @@ async function generateShoppingGuidePDF() {
                 doc.setFontSize(9);
                 doc.setTextColor(100, 100, 100);
                 doc.text(`SKU: ${adventure.sku}`, 45, y + 10);
-                doc.text(`Quantity: ${adventure.qty}`, 45, y + 15);
+
+                // Add quantity and scout names
+                const scoutNames = adventure.scouts && adventure.scouts.length > 0
+                    ? adventure.scouts.join(', ')
+                    : '';
+                doc.text(`Quantity: ${adventure.qty} - ${scoutNames}`, 45, y + 15);
 
                 y += imgSize + 5;
             }
