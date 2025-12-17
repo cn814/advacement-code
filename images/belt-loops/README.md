@@ -2,23 +2,41 @@
 
 This directory contains images of Cub Scout adventure belt loops from ScoutShop.org.
 
-## Quick Start - Simple Method
+## Quick Start
 
-Just drop your images here named by SKU number:
+You can organize your images in two ways - both work automatically!
 
-1. Download belt loop images from ScoutShop.org
-2. Rename files to the SKU number (e.g., `614334.jpg`)
-3. Save in this `belt-loops/` directory
-4. The app will automatically load them!
+### Option 1: Flat Structure (Simple)
+Just drop all images directly in the `belt-loops/` folder:
 
-### Example Structure
 ```
 belt-loops/
-  ├── 614334.jpg    (Tiger - Backyard Jungle)
-  ├── 614335.png    (Tiger - Games Tigers Play)
-  ├── 614336.jpg    (Tiger - My Tiger Jungle)
+  ├── 619939.jpg    (Code of the Wolf)
+  ├── 619937.jpg    (Footsteps)
+  ├── 646404.jpg    (Fun on the Run)
   └── ...
 ```
+
+### Option 2: Organized by Den (Recommended)
+Create subfolders for each rank:
+
+```
+belt-loops/
+  ├── tiger/
+  │   ├── 619939.jpg
+  │   └── ...
+  ├── wolf/
+  │   ├── 646404.jpg
+  │   └── ...
+  ├── bear/
+  │   └── ...
+  ├── webelos/
+  │   └── ...
+  └── arrow-of-light/  (or 'aol/')
+      └── ...
+```
+
+The app automatically checks all locations!
 
 ## Supported Formats
 - `.jpg` / `.jpeg`

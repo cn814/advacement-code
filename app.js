@@ -58,17 +58,20 @@ const commonBeltLoopSKUs = [
 // Load belt loop images from directory
 async function loadBeltLoopImages() {
     let loadedCount = 0;
-    const imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
 
-    // Try to load each common SKU
-    for (const sku of commonBeltLoopSKUs) {
-        let imageLoaded = false;
+    try {
+        // Load the adventure loops manifest
+        const response = await fetch('images/scout_awards_media/adventure-loops.json');
+        if (!response.ok) {
+            console.log('Adventure loops manifest not found');
+            return;
+        }
 
-        // Try each image extension
-        for (const ext of imageExtensions) {
-            if (imageLoaded) break;
+        const manifest = await response.json();
 
-            const imagePath = `images/belt-loops/${sku}.${ext}`;
+        // Load each image from the manifest
+        for (const [sku, filename] of Object.entries(manifest)) {
+            const imagePath = `images/scout_awards_media/_all_flat/${filename}`;
 
             try {
                 const imgResponse = await fetch(imagePath);
@@ -81,60 +84,23 @@ async function loadBeltLoopImages() {
                     };
 
                     reader.readAsDataURL(blob);
-                    imageLoaded = true;
                     loadedCount++;
                 }
             } catch (err) {
                 // Image doesn't exist, skip silently
             }
         }
-    }
 
-    // Also try to load from manifest for custom additions
-    try {
-        const response = await fetch('images/belt-loops/image-manifest.json');
-        if (response.ok) {
-            const manifest = await response.json();
-
-            for (const [key, imageInfo] of Object.entries(manifest.images)) {
-                if (key === 'example') continue;
-
-                const imagePath = `images/belt-loops/${imageInfo.filename}`;
-                const sku = imageInfo.sku;
-
-                // Skip if already loaded
-                if (appState.images[sku]) continue;
-
-                try {
-                    const imgResponse = await fetch(imagePath);
-                    if (imgResponse.ok) {
-                        const blob = await imgResponse.blob();
-                        const reader = new FileReader();
-
-                        reader.onload = (e) => {
-                            appState.images[sku] = e.target.result;
-                        };
-
-                        reader.readAsDataURL(blob);
-                        loadedCount++;
-                    }
-                } catch (err) {
-                    console.warn(`Failed to load ${sku}:`, err);
-                }
-            }
+        if (loadedCount > 0) {
+            console.log(`Loaded ${loadedCount} belt loop images`);
         }
     } catch (error) {
-        // No manifest file, that's okay
-    }
-
-    if (loadedCount > 0) {
-        console.log(`Loaded ${loadedCount} belt loop images from directory`);
+        console.log('Failed to load adventure loops:', error);
     }
 }
 
-// Load images on startup - temporarily disabled to reduce console noise during debugging
-// Uncomment this line once PDFs are working and you've added images
-// loadBeltLoopImages();
+// Load images on startup
+loadBeltLoopImages();
 
 // File upload handlers
 function handleFileUpload(e) {
@@ -200,10 +166,6 @@ function parsePDFData(text) {
         packNumber: appState.packNumber
     };
 
-    console.log('=== DEBUG: Raw PDF Text ===');
-    console.log(text);
-    console.log('=== END DEBUG ===');
-
     // Extract pack number from header if present
     const packMatch = text.match(/Pack\s+(\d+)/i);
     if (packMatch) {
@@ -228,8 +190,6 @@ function parsePDFData(text) {
 
         // Parse scout names - split by comma
         const scouts = scoutText.split(',').map(s => s.trim()).filter(s => s.length > 0);
-
-        console.log(`Found: QTY=${qty}, SKU=${sku}, Item="${itemName}", Scouts=${scouts.join(', ')}`);
 
         // Add to summary
         data.summary[sku] = {
@@ -256,7 +216,6 @@ function parsePDFData(text) {
 
     // Method 2: If Method 1 didn't find anything, try line-by-line parsing
     if (Object.keys(data.summary).length === 0) {
-        console.log('Method 1 failed, trying line-by-line parsing...');
         const lines = text.split('\n');
 
         for (let i = 0; i < lines.length; i++) {
@@ -281,8 +240,6 @@ function parsePDFData(text) {
                     }
                 }
 
-                console.log(`Line parse: QTY=${qty}, SKU=${sku}, Item=${itemName}, Scouts=${scouts.join(', ')}`);
-
                 data.summary[sku] = {
                     name: itemName,
                     qty: qty,
@@ -306,7 +263,6 @@ function parsePDFData(text) {
         }
     }
 
-    console.log('Parsed data:', data);
     appState.parsedData = data;
     displayPreview(data);
 }
