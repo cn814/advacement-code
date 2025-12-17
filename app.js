@@ -6,6 +6,7 @@ const appState = {
     pdfData: null,
     parsedData: null,
     images: {},
+    logo: null,
     packNumber: '361'
 };
 
@@ -99,8 +100,26 @@ async function loadBeltLoopImages() {
     }
 }
 
+// Load Cub Scout logo
+async function loadCubScoutLogo() {
+    try {
+        const response = await fetch('images/cub-scout-logo.png');
+        if (response.ok) {
+            const blob = await response.blob();
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                appState.logo = e.target.result;
+            };
+            reader.readAsDataURL(blob);
+        }
+    } catch (error) {
+        console.log('Logo not found');
+    }
+}
+
 // Load images on startup
 loadBeltLoopImages();
+loadCubScoutLogo();
 
 // File upload handlers
 function handleFileUpload(e) {
@@ -495,8 +514,9 @@ async function generateLabelsPDF() {
 
     if (appState.parsedData && appState.parsedData.scouts) {
         for (const scout of appState.parsedData.scouts) {
-            // Determine den from first adventure (all adventures for a scout should be same den)
+            // Determine den from first adventure
             const den = scout.adventures.length > 0 ? getDenFromSKU(scout.adventures[0].sku) : 'Cub Scout';
+            const totalAwards = scout.adventures.length;
 
             // Create one label per scout
             const row = Math.floor(labelIndex / template.cols);
@@ -510,22 +530,49 @@ async function generateLabelsPDF() {
             const x = leftMargin + (currentCol * labelWidth);
             const y = topMargin + (currentRow * labelHeight);
 
-            // Draw label border (optional)
+            // Draw label border
             doc.setDrawColor(200, 200, 200);
             doc.setLineWidth(0.1);
             doc.rect(x, y, labelWidth, labelHeight);
 
-            // Add scout name (centered vertically)
-            doc.setFontSize(14);
+            // Add logo in top left corner
+            if (appState.logo) {
+                try {
+                    const logoSize = 12;
+                    doc.addImage(appState.logo, 'PNG', x + 2, y + 2, logoSize, logoSize);
+                } catch (err) {
+                    console.warn('Failed to add logo:', err);
+                }
+            }
+
+            // Add scout name at top
+            doc.setFontSize(12);
             doc.setFont(undefined, 'bold');
             doc.setTextColor(0, 63, 135);
-            doc.text(scout.name, x + labelWidth / 2, y + labelHeight / 2 - 3, { align: 'center' });
+            doc.text(scout.name, x + labelWidth / 2, y + 5, { align: 'center' });
 
-            // Add den (centered, below name)
-            doc.setFontSize(10);
+            // Add den below name
+            doc.setFontSize(9);
             doc.setFont(undefined, 'normal');
             doc.setTextColor(0, 0, 0);
-            doc.text(den, x + labelWidth / 2, y + labelHeight / 2 + 4, { align: 'center' });
+            doc.text(den, x + labelWidth / 2, y + 9, { align: 'center' });
+
+            // Add big number (total awards) on right side
+            doc.setFontSize(24);
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(255, 102, 0);
+            doc.text(totalAwards.toString(), x + labelWidth - 8, y + 10, { align: 'center' });
+
+            // Add award list
+            doc.setFontSize(7);
+            doc.setFont(undefined, 'normal');
+            doc.setTextColor(0, 0, 0);
+            let listY = y + 14;
+            for (const adventure of scout.adventures) {
+                if (listY > y + labelHeight - 2) break; // Don't overflow label
+                doc.text(`• ${adventure.name}`, x + 2, listY);
+                listY += 3;
+            }
 
             labelIndex++;
         }
